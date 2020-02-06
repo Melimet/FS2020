@@ -1,28 +1,53 @@
 import React from "react";
+import ContactService from "../services/ContactService";
 
 
-const ContactForm = ({newName, newNumber, persons, setPersons, setNewName, setNewNumber}) => {
+const ContactForm = ({newName, newNumber, persons, setPersons, setNewName, setNewNumber, setMessage}) => {
 
   const addContact = (event) => {
     event.preventDefault();
 
     const newContact = {
       name: newName,
-      number: newNumber,
-      id: persons.length + 1
+      number: newNumber
     };
 
     persons.filter(person => person.name === newName).length ?
-      window.alert(`${newName} is already in the phonebook`)
+      window.confirm(`${newName} is already in the phonebook, update current info?`) && updateContact(newContact)
       : createNewContact(newContact)
   };
 
   const createNewContact = (newContact) => {
-    setPersons(persons.concat(newContact))
+    ContactService
+      .create(newContact)
+      .then(returnedContact => {
+        setPersons(persons.concat(returnedContact))
+        const newMessage = {
+          type: 'success',
+          text: 'Successfully added a new contact!'
+        }
+        setMessage(newMessage)
+      });
+
     setNewName('');
     setNewNumber('');
   }
 
+  const updateContact = (newContact) => {
+
+    const person = persons.find(person => newContact.name === person.name)
+
+    ContactService
+      .update(person.id, newContact)
+      .then(returnedContact => {
+        setPersons(persons.map(contact => contact.id !== person.id ? contact : returnedContact))
+        const newMessage = {
+          type: 'success',
+          text: 'Successfully updated contact!'
+        }
+        setMessage(newMessage)
+      })
+  }
   const handleNameChange = (event) => {
     setNewName(event.target.value)
   };
