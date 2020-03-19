@@ -27,6 +27,13 @@ const ContactForm = ({newName, newNumber, persons, setPersons, setNewName, setNe
           text: 'Successfully added a new contact!'
         }
         setMessage(newMessage)
+      })
+      .catch(error => {
+        const newMessage = {
+          type: 'error',
+          text: `${error.response.data}`
+        }
+        setMessage(newMessage)
       });
 
     setNewName('');
