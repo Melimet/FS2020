@@ -12,73 +12,105 @@ beforeEach(async () => {
 
   await Blog.insertMany(helper.initialBlogs)
 })
+describe('when there are initially blogs created', () => {
+  test('blogs are returned as json', async () => {
+    await api
+      .get('/api/blogs')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+  })
 
-test('blogs are returned as json', async () => {
-  await api
-    .get('/api/blogs')
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
+  test('correct amount of blogs are returned', async () => {
+    const response = await api.get('/api/blogs')
+
+    expect(response.body).toHaveLength(helper.initialBlogs.length)
+  })
+
+  test('blogs are identified by id', async () => {
+    const response = await api.get('/api/blogs')
+
+    expect(response.body[0].id).toBeDefined()
+  })
 })
+describe('when creating a new blog', () => {
+  test('new blogs can be created', async () => {
+    const newBlog = {
+      "author": "Erkka",
+      "likes": 123234,
+      "title": "Avaimet ilmasiin noppiin",
+      "url": "https://weboodi.helsinki.fi/hy/etusivu.html"
+    }
+    await api.post('/api/blogs')
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
 
-test('correct amount of blogs are returned', async () => {
-  const response = await api.get('/api/blogs')
+    const aftermath = await helper.blogsInDb()
+    expect(aftermath.length).toBe(helper.initialBlogs.length + 1)
 
-  expect(response.body).toHaveLength(helper.initialBlogs.length)
+    expect(aftermath.map(i => i.author)).toContain('Erkka')
+  })
+
+  test('likes are set to 0 if amount of likes not defined', async () => {
+    const newBlog = {
+      "author": "Erkka",
+      "title": "Avaimet ilmasiin noppiin",
+      "url": "https://weboodi.helsinki.fi/hy/etusivu.html"
+    }
+    await api.post('/api/blogs')
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+
+    const aftermath = await helper.blogsInDb()
+
+    expect(aftermath.map(i => i.likes)).toContain(0)
+  })
+
+  test('400 is returned if new blog is missing title and/or url', async () => {
+    const newBlog = {
+      "author": "Hessu hopo",
+      "likes": 1
+    }
+    await api.post('/api/blogs')
+      .send(newBlog)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+
+    const aftermath = await helper.blogsInDb()
+    expect(aftermath.length).toBe(helper.initialBlogs.length)
+  })
 })
+describe('when deleting a blog', () => {
+  test('amount of blogs is reduced', async () => {
 
-test('blogs are identified by id', async () => {
-  const response = await api.get('/api/blogs')
+    const response = await api.get('/api/blogs')
+      .expect(200)
 
-  expect(response.body[0].id).toBeDefined()
-})
+    const blogToDelete = response.body[0]
 
-test('new blogs can be created', async () => {
-  const newBlog =  {
-    "author": "Erkka",
-    "likes": 123234,
-    "title": "Avaimet ilmasiin noppiin",
-    "url": "https://weboodi.helsinki.fi/hy/etusivu.html"
-  }
-  await api.post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/)
+    await api.delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(200)
 
-  const aftermath = await helper.blogsInDb()
-  expect(aftermath.length).toBe(helper.initialBlogs.length + 1)
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
 
-  expect(aftermath.map(i => i.author)).toContain('Erkka')
-})
+  })
+  test('correct blog is removed', async () => {
+    const response = await api.get('/api/blogs')
+      .expect(200)
 
-test('likes are set to 0 if amount of likes not defined', async () =>{
-  const newBlog =  {
-    "author": "Erkka",
-    "title": "Avaimet ilmasiin noppiin",
-    "url": "https://weboodi.helsinki.fi/hy/etusivu.html"
-  }
-  await api.post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/)
+    const blogToDelete = response.body[0]
 
-  const aftermath = await helper.blogsInDb()
+    await api.delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(200)
 
-  expect(aftermath.map(i => i.likes)).toContain('0')
-})
+    const blogsAtEnd = await helper.blogsInDb()
+    const titles = blogsAtEnd.map(i => i.title)
 
-test('400 is returned if new blog is missing title and url', async () => {
-  const newBlog = {
-    "author": "Hessu hopo",
-    "likes": "1"
-  }
-  await api.post('/api/blogs')
-    .send(newBlog)
-    .expect(400)
-    .expect('Content-Type', /application\/json/)
+    expect(titles).not.toContain(blogToDelete.title)
 
-  const aftermath = await helper.blogsInDb()
-  expect(aftermath.length).toBe(helper.initialBlogs.length)
-
+  })
 })
 afterAll(() => {
   mongoose.connection.close()
