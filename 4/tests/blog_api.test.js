@@ -112,6 +112,21 @@ describe('when deleting a blog', () => {
 
   })
 })
+describe('when updating a blog', () => {
+  test('amount of likes is updated correctly', async () => {
+    const allBlogs = await helper.blogsInDb()
+    const blogToUpdate = allBlogs[0]
+
+    const updatedBlog = {...blogToUpdate, likes: 10}
+
+    await api.put(`/api/blogs/${updatedBlog.id}`).send(updatedBlog)
+      .expect(201)
+
+    const updatedBlogs = await helper.blogsInDb()
+    const updatedBlogFromDb = updatedBlogs[0]
+    expect(updatedBlogFromDb.likes).toEqual(10)
+  })
+})
 afterAll(() => {
   mongoose.connection.close()
 })
